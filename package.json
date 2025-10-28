@@ -9,9 +9,10 @@
     "author": "Raj Kapadia",
     "license": "ISC",
     "dependencies": {
-        "body-parser": "^1.19.0",
-        "dotenv": "^8.2.0",
-        "express": "^4.17.1",
+        "body-parser": "^1.20.3",
+        "dotenv": "^8.6.0",
+        "express": "^4.21.2",
+        "node-fetch": "^3.3.2",
         "twilio": "^3.84.1"
     }
 }
