@@ -66,7 +66,7 @@ webApp.post('/whatsapp', async (req, res) => {
             });
 
             // Reply to user
-            await WA.sendMessage(`CSV received! ${rows.length - 1} rows detected. Check server logs for contents.`, senderID);
+            // await WA.sendMessage(`CSV received! ${rows.length - 1} rows detected. Check server logs for contents.`, senderID);
 
         } catch (err) {
             console.error('Error reading CSV:', err.message);
