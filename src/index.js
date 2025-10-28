@@ -2,7 +2,8 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 require('dotenv').config();
-
+var accountSid = process.env.TWILIO_ACCOUNT_SID;
+var authToken = process.env.TWILIO_AUTH_TOKEN;
 // Start the webapp
 const webApp = express();
 
@@ -38,7 +39,7 @@ webApp.post('/whatsapp', async (req, res) => {
             // Fetch CSV directly from Twilio (in memory)
             const response = await fetch(mediaUrl, {
                 headers: {
-                    'Authorization': 'Basic ' + Buffer.from(`${ACCOUNT_SID}:${AUTH_TOKEN}`).toString('base64')
+                    'Authorization': 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64')
                 }
             });
 
