@@ -1,7 +1,11 @@
 // external packages
 const express = require('express');
 const bodyParser = require('body-parser');
+const { MongoClient } = require('mongodb');
 require('dotenv').config();
+const uri = process.env.MONGO_LINK;
+
+const client = new MongoClient(uri);
 var accountSid = process.env.TWILIO_ACCOUNT_SID;
 var authToken = process.env.TWILIO_AUTH_TOKEN;
 // Start the webapp
