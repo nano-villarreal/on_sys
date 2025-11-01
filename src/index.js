@@ -5,6 +5,11 @@ const { MongoClient } = require('mongodb');
 require('dotenv').config();
 const uri = process.env.MONGO_LINK;
 
+const twilioClient = require('twilio')(accountSid, authToken, {
+    lazyLoading: true
+});
+
+
 const client = new MongoClient(uri);
 var accountSid = process.env.TWILIO_ACCOUNT_SID;
 var authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -35,7 +40,7 @@ const sendMessage = async (message, senderID) => {
     console.log(senderID)
 
     try {
-        await client.messages.create({
+        await twilioClient.messages.create({
             to: senderID,
             body: message,
             from: `whatsapp:+14155238886`
