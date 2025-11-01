@@ -81,7 +81,8 @@ webApp.post('/whatsapp', async (req, res) => {
                 const epc = cols[epcIndex];
                 if (epc) {
                     epcValues.push(epc);
-                    console.log(`${i + 1}. ${epc}`);
+                    const result = client.db("on").collection("tags").findOne({ scanId: epc })
+                    console.log(result);
                 }
             });
 
