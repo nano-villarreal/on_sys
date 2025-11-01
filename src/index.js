@@ -36,20 +36,111 @@ const WA = require('../helper-function/whatsapp-send-message');
 // Route for WhatsApp
 
 // Function to send message to WhatsApp
-const sendMessage = async (message, senderID) => {
-    console.log(senderID)
+// Unified sendMessage: handles strings, arrays, or objects
+const sendMessage = async (content, senderID) => {
+    console.log('Sending WhatsApp message to:', senderID);
 
     try {
-        await twilioClient.messages.create({
-            to: senderID,
-            body: message,
-            from: `whatsapp:+14155238886`
-        });
+        // Case 1: Plain string
+        if (typeof content === 'string') {
+            if (!content.trim()) {
+                console.warn('Empty message skipped.');
+                return;
+            }
+
+            const msg = await twilioClient.messages.create({
+                from: 'whatsapp:+14155238886',
+                to: senderID,
+                body: content
+            });
+            console.log('Message sent, SID:', msg.sid);
+            return;
+        }
+
+        // Case 2: Array of results (like from CSV processing)
+        if (Array.isArray(content)) {
+            const maxLength = 1500;
+            let message = 'CSV Processing Results:\n\n';
+            let currentLength = message.length;
+
+            for (const item of content) {
+                const epc = item.epc || 'Unknown';
+                const status = item.result ? 'Found' : item.error ? 'Error' : 'Not found';
+                const line = `${status}: ${epc}\n`;
+
+                if (currentLength + line.length > maxLength) {
+                    // Send current chunk
+                    await twilioClient.messages.create({
+                        from: 'whatsapp:+14155238886',
+                        to: senderID,
+                        body: message
+                    });
+                    console.log('Chunk sent (continued)');
+                    message = `...continued...\n${line}`;
+                    currentLength = message.length;
+                } else {
+                    message += line;
+                    currentLength += line.length;
+                }
+            }
+
+            // Send final chunk
+            if (message.trim() && message !== 'CSV Processing Results:\n\n') {
+                await twilioClient.messages.create({
+                    from: 'whatsapp:+14155238886',
+                    to: senderID,
+                    body: message
+                });
+                console.log('Final chunk sent');
+            } else if (content.length === 0) {
+                await twilioClient.messages.create({
+                    from: 'whatsapp:+14155238886',
+                    to: senderID,
+                    body: 'No EPCs found in CSV.'
+                });
+            }
+            return;
+        }
+
+        // Case 3: Any other object → pretty print
+        const jsonString = JSON.stringify(content, null, 2);
+        const lines = jsonString.split('\n');
+        const chunkSize = 1400;
+        let chunk = '';
+
+        for (const line of lines) {
+            if (chunk.length + line.length + 1 > chunkSize) {
+                await twilioClient.messages.create({
+                    from: 'whatsapp:+14155238886',
+                    to: senderID,
+                    body: chunk || 'Data:'
+                });
+                chunk = line + '\n';
+            } else {
+                chunk += line + '\n';
+            }
+        }
+        if (chunk) {
+            await twilioClient.messages.create({
+                from: 'whatsapp:+14155238886',
+                to: senderID,
+                body: chunk
+            });
+        }
+
     } catch (error) {
-        console.log(`Error at sendMessage --> ${error}`);
+        console.error('Error at sendMessage -->', error.message);
+        try {
+            await twilioClient.messages.create({
+                from: 'whatsapp:+14155238886',
+                to: senderID,
+                body: 'Failed to send message.'
+            });
+        } catch (fallbackError) {
+            console.error('Fallback message also failed:', fallbackError.message);
+        }
     }
 };
-
 
 // ---------- WhatsApp ----------
 webApp.post('/whatsapp', async (req, res) => {
