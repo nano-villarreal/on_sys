@@ -35,14 +35,13 @@ webApp.post('/whatsapp', async (req, res) => {
     const form = req.body;
     const senderID = form.From;
     const numMedia = parseInt(form.NumMedia || '0', 10);
-
     console.log('Incoming payload:', form);
 
-    // ---- CSV handling ----
-    if (numMedia > 0 && form.MediaContentType0 === 'text/csv') {
-        const mediaUrl = form.MediaUrl0;
+    try {
+        // ---- CSV handling ----
+        if (numMedia > 0 && form.MediaContentType0 === 'text/csv') {
+            const mediaUrl = form.MediaUrl0;
 
-        try {
             // 1. Authenticate with Twilio
             const auth = Buffer.from(
                 `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`
@@ -75,42 +74,53 @@ webApp.post('/whatsapp', async (req, res) => {
                 return res.sendStatus(200);
             }
 
-            // 4. Extract and print ALL EPCs
+            // 4. Extract and query ALL EPCs ASYNCHRONOUSLY
             const epcValues = [];
             const dataRows = lines.slice(1); // Skip header
+            const results = [];
 
-            console.log('\n=== ALL EPCs FROM CSV ===');
-            dataRows.forEach((line, i) => {
+            console.log('\n=== QUERYING EPCs FROM DATABASE ===');
+            for (const line of dataRows) {
                 const cols = line.split(',').map(c => c.trim());
                 const epc = cols[epcIndex];
                 if (epc) {
                     epcValues.push(epc);
-                    const result = client.db("on").collection("tags").findOne({ scanId: epc })
-                    console.log(result);
+                    try {
+                        const result = await client.db("on").collection("tags").findOne({ scanId: epc });
+                        console.log(`EPC: ${epc} →`, result);
+                        results.push({ epc, result });
+                    } catch (dbErr) {
+                        console.error(`DB error for EPC ${epc}:`, dbErr.message);
+                        results.push({ epc, error: dbErr.message });
+                    }
                 }
-            });
+            }
 
-            console.log(`\nTotal EPCs found: ${epcValues.length}`);
+            console.log(`\nTotal EPCs processed: ${epcValues.length}`);
 
             // 5. Send confirmation
             await sendMessage(
-                `CSV processed! Found ${epcValues.length} EPC(s). Check server logs.`,
+                `CSV processed! Found ${epcValues.length} EPC(s). Check server logs for details.`,
                 senderID
             );
-
-        } catch (err) {
-            console.error('Error reading CSV:', err.message);
-            await sendMessage('Error reading CSV file.', senderID);
         }
-    }
-    // ---- Plain text fallback ----
-    else {
-        const txt = form.Body || '(no text)';
-        console.log('Text message:', txt);
-        await sendMessage(`You said: ${txt}`, senderID);
-    }
+        // ---- Plain text fallback ----
+        else {
+            const txt = form.Body || '(no text)';
+            console.log('Text message:', txt);
+            await sendMessage(`You said: ${txt}`, senderID);
+        }
 
-    res.sendStatus(200);
+        res.sendStatus(200);
+    } catch (err) {
+        console.error('Error in /whatsapp handler:', err.message);
+        try {
+            await sendMessage('An error occurred while processing your request.', senderID);
+        } catch (sendErr) {
+            console.error('Failed to send error message:', sendErr);
+        }
+        res.sendStatus(200); // Still respond 200 to Twilio to avoid retries
+    }
 });
 // Start the server
 webApp.listen(PORT, () => {
