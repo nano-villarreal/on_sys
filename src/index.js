@@ -32,6 +32,7 @@ const WA = require('../helper-function/whatsapp-send-message');
 
 // Function to send message to WhatsApp
 const sendMessage = async (message, senderID) => {
+    console.log(senderID)
 
     try {
         await client.messages.create({
@@ -115,7 +116,7 @@ webApp.post('/whatsapp', async (req, res) => {
 
             // 5. Send confirmation
             await sendMessage(
-                `CSV processed! Found ${epcValues.length} EPC(s). Check server logs for details.`,
+                results,
                 senderID
             );
         }
