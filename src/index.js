@@ -30,6 +30,21 @@ const WA = require('../helper-function/whatsapp-send-message');
 // Route for WhatsApp
 // Route for WhatsApp
 
+// Function to send message to WhatsApp
+const sendMessage = async (message, senderID) => {
+
+    try {
+        await client.messages.create({
+            to: senderID,
+            body: message,
+            from: `whatsapp:+14155238886`
+        });
+    } catch (error) {
+        console.log(`Error at sendMessage --> ${error}`);
+    }
+};
+
+
 // ---------- WhatsApp ----------
 webApp.post('/whatsapp', async (req, res) => {
     const form = req.body;
