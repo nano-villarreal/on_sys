@@ -39,7 +39,7 @@ webApp.post('/whatsapp', async (req, res) => {
         const mediaUrl = form.MediaUrl0;
 
         try {
-            // 1. Build proper Basic Auth header
+            // 1. Authenticate with Twilio
             const auth = Buffer.from(
                 `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`
             ).toString('base64');
@@ -53,29 +53,49 @@ webApp.post('/whatsapp', async (req, res) => {
                 throw new Error(`HTTP ${resp.status} – ${txt}`);
             }
 
-            // 2. Read whole CSV into a string (in-memory)
+            // 2. Read CSV
             const csvText = await resp.text();
-
-            // 3. Simple CSV → array of arrays
             const lines = csvText.trim().split('\n');
+
+            if (lines.length <= 1) {
+                await sendMessage('CSV is empty.', senderID);
+                return res.sendStatus(200);
+            }
+
+            // 3. Find EPC column index
             const headers = lines[0].split(',').map(h => h.trim());
-            const dataRows = lines.slice(1, 11).map(l => l.split(',').map(c => c.trim()));
+            const epcIndex = headers.findIndex(h => h.toUpperCase() === 'EPC');
 
-            // 4. Log
-            console.log('\n=== CSV CONTENTS (first 10 rows) ===');
-            console.log('Headers:', headers.join(' | '));
-            dataRows.forEach((row, i) => console.log(`${i + 1}: ${row.join(' | ')}`));
-            console.log('Total rows in file:', lines.length - 1);
+            if (epcIndex === -1) {
+                await sendMessage('No EPC column found in CSV.', senderID);
+                return res.sendStatus(200);
+            }
 
-            // 5. Reply
+            // 4. Extract and print ALL EPCs
+            const epcValues = [];
+            const dataRows = lines.slice(1); // Skip header
+
+            console.log('\n=== ALL EPCs FROM CSV ===');
+            dataRows.forEach((line, i) => {
+                const cols = line.split(',').map(c => c.trim());
+                const epc = cols[epcIndex];
+                if (epc) {
+                    epcValues.push(epc);
+                    console.log(`${i + 1}. ${epc}`);
+                }
+            });
+
+            console.log(`\nTotal EPCs found: ${epcValues.length}`);
+
+            // 5. Send confirmation
             await sendMessage(
-                `CSV received! ${lines.length - 1} row(s) – check server logs for content.`,
+                `CSV processed! Found ${epcValues.length} EPC(s). Check server logs.`,
                 senderID
             );
 
         } catch (err) {
             console.error('Error reading CSV:', err.message);
-            await sendMessage('Received file, but could not read CSV.', senderID);
+            await sendMessage('Error reading CSV file.', senderID);
         }
     }
     // ---- Plain text fallback ----
@@ -85,7 +105,6 @@ webApp.post('/whatsapp', async (req, res) => {
         await sendMessage(`You said: ${txt}`, senderID);
     }
 
-    // Twilio expects a quick 200
     res.sendStatus(200);
 });
 // Start the server
