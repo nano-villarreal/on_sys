@@ -40,11 +40,38 @@ const WA = require('../helper-function/whatsapp-send-message');
 // ──────────────────────────────────────────────────────────────
 // Unified sendMessage – handles strings OR full result objects
 // ──────────────────────────────────────────────────────────────
-const sendMessage = async (content, senderID) => {
+
+/**
+ * Converts array of { epc, result: { article, client } } into:
+ * "7 toalla from club contry\n2 mantel from club misiones"
+ */
+const buildArticleSummary = (dbResults) => {
+    const summary = {};
+
+    for (const item of dbResults) {
+        const { client, article } = item.result || {};
+        if (!client || !article) continue; // skip malformed
+
+        if (!summary[client]) summary[client] = {};
+        summary[client][article] = (summary[client][article] || 0) + 1;
+    }
+
+    const lines = [];
+    for (const [client, articles] of Object.entries(summary)) {
+        for (const [article, count] of Object.entries(articles)) {
+            const plural = count > 1 ? 's' : '';
+            lines.push(`${count} ${article}${plural} from ${client}`);
+        }
+    }
+
+    return lines.length > 0 ? lines.join('\n') : 'No results to show.';
+};
+
+const sendMessage = async (content, senderID, options = {}) => {
     console.log('sendMessage → to:', senderID);
 
     try {
-        // ───── 1. Plain string ─────
+        // ───── 1. Handle plain string (unchanged) ─────
         if (typeof content === 'string') {
             if (!content.trim()) {
                 console.warn('Empty string – skipping.');
@@ -60,14 +87,32 @@ const sendMessage = async (content, senderID) => {
             return;
         }
 
-        // ───── 2. Anything else → JSON pretty-print + chunking ─────
-        const json = JSON.stringify(content, null, 2);   // full object tree
+        // ───── 2. Handle Array: Build Summary OR Full JSON ─────
+        if (Array.isArray(content)) {
+            // Option to force full JSON (for debugging)
+            if (options.fullJson) {
+                return await sendMessage(JSON.stringify(content, null, 2), senderID);
+            }
+
+            // Build compact summary: "7 toalla from club contry"
+            const summary = buildArticleSummary(content);
+
+            const msg = await twilioClient.messages.create({
+                from: 'whatsapp:+14155238886',
+                to: senderID,
+                body: summary
+            });
+            console.log('Summary message sent, SID:', msg.sid);
+            return;
+        }
+
+        // ───── 3. Fallback: Any other object → JSON pretty-print + chunking ─────
+        const json = JSON.stringify(content, null, 2);
         const lines = json.split('\n');
-        const MAX_CHUNK = 1500;                          // safe for WhatsApp
+        const MAX_CHUNK = 1500;
 
         let chunk = '';
         for (const line of lines) {
-            // If adding this line would overflow, send the current chunk first
             if (chunk.length + line.length + 1 > MAX_CHUNK) {
                 await twilioClient.messages.create({
                     from: 'whatsapp:+14155238886',
@@ -81,7 +126,6 @@ const sendMessage = async (content, senderID) => {
             }
         }
 
-        // Send the last piece (if any)
         if (chunk.trim()) {
             await twilioClient.messages.create({
                 from: 'whatsapp:+14155238886',
@@ -89,12 +133,6 @@ const sendMessage = async (content, senderID) => {
                 body: chunk
             });
             console.log('Final chunk sent');
-        } else if (Array.isArray(content) && content.length === 0) {
-            await twilioClient.messages.create({
-                from: 'whatsapp:+14155238886',
-                to: senderID,
-                body: 'No results to show.'
-            });
         }
 
     } catch (error) {
