@@ -37,14 +37,17 @@ const WA = require('../helper-function/whatsapp-send-message');
 
 // Function to send message to WhatsApp
 // Unified sendMessage: handles strings, arrays, or objects
+// ──────────────────────────────────────────────────────────────
+// Unified sendMessage – handles strings OR full result objects
+// ──────────────────────────────────────────────────────────────
 const sendMessage = async (content, senderID) => {
-    console.log('Sending WhatsApp message to:', senderID);
+    console.log('sendMessage → to:', senderID);
 
     try {
-        // Case 1: Plain string
+        // ───── 1. Plain string ─────
         if (typeof content === 'string') {
             if (!content.trim()) {
-                console.warn('Empty message skipped.');
+                console.warn('Empty string – skipping.');
                 return;
             }
 
@@ -53,91 +56,57 @@ const sendMessage = async (content, senderID) => {
                 to: senderID,
                 body: content
             });
-            console.log('Message sent, SID:', msg.sid);
+            console.log('String message sent, SID:', msg.sid);
             return;
         }
 
-        // Case 2: Array of results (like from CSV processing)
-        if (Array.isArray(content)) {
-            const maxLength = 1500;
-            let message = 'CSV Processing Results:\n\n';
-            let currentLength = message.length;
+        // ───── 2. Anything else → JSON pretty-print + chunking ─────
+        const json = JSON.stringify(content, null, 2);   // full object tree
+        const lines = json.split('\n');
+        const MAX_CHUNK = 1500;                          // safe for WhatsApp
 
-            for (const item of content) {
-                const epc = item.epc || 'Unknown';
-                const status = item.result ? 'Found' : item.error ? 'Error' : 'Not found';
-                const line = `${status}: ${epc}\n`;
-
-                if (currentLength + line.length > maxLength) {
-                    // Send current chunk
-                    await twilioClient.messages.create({
-                        from: 'whatsapp:+14155238886',
-                        to: senderID,
-                        body: message
-                    });
-                    console.log('Chunk sent (continued)');
-                    message = `...continued...\n${line}`;
-                    currentLength = message.length;
-                } else {
-                    message += line;
-                    currentLength += line.length;
-                }
-            }
-
-            // Send final chunk
-            if (message.trim() && message !== 'CSV Processing Results:\n\n') {
-                await twilioClient.messages.create({
-                    from: 'whatsapp:+14155238886',
-                    to: senderID,
-                    body: message
-                });
-                console.log('Final chunk sent');
-            } else if (content.length === 0) {
-                await twilioClient.messages.create({
-                    from: 'whatsapp:+14155238886',
-                    to: senderID,
-                    body: 'No EPCs found in CSV.'
-                });
-            }
-            return;
-        }
-
-        // Case 3: Any other object → pretty print
-        const jsonString = JSON.stringify(content, null, 2);
-        const lines = jsonString.split('\n');
-        const chunkSize = 1400;
         let chunk = '';
-
         for (const line of lines) {
-            if (chunk.length + line.length + 1 > chunkSize) {
+            // If adding this line would overflow, send the current chunk first
+            if (chunk.length + line.length + 1 > MAX_CHUNK) {
                 await twilioClient.messages.create({
                     from: 'whatsapp:+14155238886',
                     to: senderID,
-                    body: chunk || 'Data:'
+                    body: chunk
                 });
+                console.log('Chunk sent (continued)');
                 chunk = line + '\n';
             } else {
                 chunk += line + '\n';
             }
         }
-        if (chunk) {
+
+        // Send the last piece (if any)
+        if (chunk.trim()) {
             await twilioClient.messages.create({
                 from: 'whatsapp:+14155238886',
                 to: senderID,
                 body: chunk
             });
+            console.log('Final chunk sent');
+        } else if (Array.isArray(content) && content.length === 0) {
+            await twilioClient.messages.create({
+                from: 'whatsapp:+14155238886',
+                to: senderID,
+                body: 'No results to show.'
+            });
         }
 
     } catch (error) {
-        console.error('Error at sendMessage -->', error.message);
+        console.error('sendMessage error →', error.message);
         try {
             await twilioClient.messages.create({
                 from: 'whatsapp:+14155238886',
                 to: senderID,
-                body: 'Failed to send message.'
+                body: 'Failed to send the response.'
             });
-        } catch (fallbackError) {
-            console.error('Fallback message also failed:', fallbackError.message);
+        } catch (fallbackErr) {
+            console.error('Fallback message also failed →', fallbackErr.message);
         }
     }
 };
