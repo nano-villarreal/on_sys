@@ -4,6 +4,8 @@ const bodyParser = require('body-parser');
 const { MongoClient } = require('mongodb');
 require('dotenv').config();
 const uri = process.env.MONGO_LINK;
+var accountSid = process.env.TWILIO_ACCOUNT_SID;
+var authToken = process.env.TWILIO_AUTH_TOKEN;
 
 const twilioClient = require('twilio')(accountSid, authToken, {
     lazyLoading: true
