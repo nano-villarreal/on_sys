@@ -60,7 +60,7 @@ const buildArticleSummary = (dbResults) => {
     for (const [client, articles] of Object.entries(summary)) {
         for (const [article, count] of Object.entries(articles)) {
             const plural = count > 1 ? 's' : '';
-            lines.push(`${count} ${article}${plural} from ${client}`);
+            lines.push(`Se contaron ${count} ${article}${plural} de ${client}`);
         }
     }
 
