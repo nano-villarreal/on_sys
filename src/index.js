@@ -7,6 +7,7 @@ const uri = process.env.MONGO_LINK;
 var accountSid = process.env.TWILIO_ACCOUNT_SID;
 var authToken = process.env.TWILIO_AUTH_TOKEN;
 
+
 const twilioClient = require('twilio')(accountSid, authToken);
 
 
@@ -15,7 +16,8 @@ var accountSid = process.env.TWILIO_ACCOUNT_SID;
 var authToken = process.env.TWILIO_AUTH_TOKEN;
 // Start the webapp
 const webApp = express();
-
+webApp.set('views', './views');     // optional: default is ./views
+webApp.set('view engine', 'ejs');
 // Webapp settings
 webApp.use(bodyParser.urlencoded({
     extended: true
@@ -150,96 +152,54 @@ const sendMessage = async (content, senderID, options = {}) => {
 };
 
 // ---------- WhatsApp ----------
-webApp.post('/whatsapp', async (req, res) => {
-    const form = req.body;
-    const senderID = form.From;
-    const numMedia = parseInt(form.NumMedia || '0', 10);
-    console.log('Incoming payload:', form);
+// ---------- Web Form Input ----------
+webApp.post('/conteo_input', async (req, res) => {
+    const body = req.body;
+    const rawText = body.IDs || '';  // Asegúrate de que el name del textarea sea "IDs"
 
-    try {
-        // ---- CSV handling ----
-        if (numMedia > 0 && form.MediaContentType0 === 'text/csv') {
-            const mediaUrl = form.MediaUrl0;
+    console.log('Raw input recibido:', rawText);
 
-            // 1. Authenticate with Twilio
-            const auth = Buffer.from(
-                `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`
-            ).toString('base64');
+    // 1. Separar por saltos de línea
+    const lines = rawText.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
 
-            const resp = await fetch(mediaUrl, {
-                headers: { Authorization: `Basic ${auth}` },
-            });
+    // 2. Eliminar duplicados (opcional, pero útil)
+    const uniqueEPCs = [...new Set(lines)];
 
-            if (!resp.ok) {
-                const txt = await resp.text();
-                throw new Error(`HTTP ${resp.status} – ${txt}`);
-            }
+    // 3. Imprimir cada EPC individualmente
+    console.log(`\nTotal EPCs recibidos: ${lines.length}`);
+    console.log(`EPCs únicos: ${uniqueEPCs.length}\n`);
 
-            // 2. Read CSV
-            const csvText = await resp.text();
-            const lines = csvText.trim().split('\n');
+    uniqueEPCs.forEach((epc, index) => {
+        console.log(`${index + 1}. ${epc}`);
+    });
 
-            if (lines.length <= 1) {
-                await sendMessage('CSV is empty.', senderID);
-                return res.sendStatus(200);
-            }
-
-            // 3. Find EPC column index
-            const headers = lines[0].split(',').map(h => h.trim());
-            const epcIndex = headers.findIndex(h => h.toUpperCase() === 'EPC');
-
-            if (epcIndex === -1) {
-                await sendMessage('No EPC column found in CSV.', senderID);
-                return res.sendStatus(200);
-            }
-
-            // 4. Extract and query ALL EPCs ASYNCHRONOUSLY
-            const epcValues = [];
-            const dataRows = lines.slice(1); // Skip header
-            const results = [];
-
-            console.log('\n=== QUERYING EPCs FROM DATABASE ===');
-            for (const line of dataRows) {
-                const cols = line.split(',').map(c => c.trim());
-                const epc = cols[epcIndex];
-                if (epc) {
-                    epcValues.push(epc);
-                    try {
-                        const result = await client.db("on").collection("tags").findOne({ scanId: epc });
-                        console.log(`EPC: ${epc} →`, result);
-                        results.push({ epc, result });
-                    } catch (dbErr) {
-                        console.error(`DB error for EPC ${epc}:`, dbErr.message);
-                        results.push({ epc, error: dbErr.message });
-                    }
-                }
-            }
-
-            console.log(`\nTotal EPCs processed: ${epcValues.length}`);
-
-            // 5. Send confirmation
-            await sendMessage(
-                results,
-                senderID
-            );
-        }
-        // ---- Plain text fallback ----
-        else {
-            const txt = form.Body || '(no text)';
-            console.log('Text message:', txt);
-            await sendMessage(`You said: ${txt}`, senderID);
-        }
-
-        res.sendStatus(200);
-    } catch (err) {
-        console.error('Error in /whatsapp handler:', err.message);
+    // 4. (Opcional) Buscar en MongoDB y generar resumen
+    const results = [];
+    for (const epc of uniqueEPCs) {
         try {
-            await sendMessage('An error occurred while processing your request.', senderID);
-        } catch (sendErr) {
-            console.error('Failed to send error message:', sendErr);
+            const result = await client.db("on").collection("tags").findOne({ scanId: epc });
+            results.push({ epc, result });
+            console.log(`→ ${epc} →`, result ? 'Encontrado' : 'No encontrado');
+        } catch (err) {
+            console.error(`Error buscando ${epc}:`, err.message);
+            results.push({ epc, error: err.message });
         }
-        res.sendStatus(200); // Still respond 200 to Twilio to avoid retries
     }
+
+    // 5. Generar resumen como en WhatsApp
+    const summary = buildArticleSummary(results.filter(r => r.result));
+
+    // 6. Responder en la web
+    res.send(`
+        <div style="font-family: 'Poppins', sans-serif; padding: 40px; text-align: center; background: #f0f7f4; min-height: 100vh;">
+            <h1 style="color: #128C7E;">Conteo Procesado</h1>
+            <p><strong>${uniqueEPCs.length}</strong> EPCs únicos procesados.</p>
+            <pre style="background: white; padding: 16px; border-radius: 12px; text-align: left; max-width: 600px; margin: 20px auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+${summary}
+            </pre>
+            <a href="/" style="background: #25D366; color: white; padding: 12px 24px; border-radius: 12px; text-decoration: none; font-weight: 600;">Volver al inicio</a>
+        </div>
+    `);
 });
 // Start the server
 webApp.listen(PORT, () => {
