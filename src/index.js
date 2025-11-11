@@ -27,7 +27,7 @@ const PORT = process.env.PORT;
 
 // Home route
 webApp.get('/', (req, res) => {
-    res.send(`Hello World.!`);
+    res.render('ui.ejs');
 });
 
 const WA = require('../helper-function/whatsapp-send-message');
