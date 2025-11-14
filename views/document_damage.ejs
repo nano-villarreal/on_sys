@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reporte de Daño</title>
+
+    <!-- Google Font – Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <style>
+        :root {
+            --wa-green: #25D366;
+            --wa-dark: #128C7E;
+            --bg: #f0f7f4;
+            --card: #ffffff;
+            --text: #2d3748;
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.07);
+            --border: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #e6f5ee, #c2e8d6);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .card {
+            background: var(--card);
+            max-width: 560px;
+            width: 100%;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .logo {
+            width: 84px;
+            height: 84px;
+            background: var(--wa-green);
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            box-shadow: 0 6px 20px rgba(37, 211, 102, .35);
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--wa-dark);
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: #555;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--wa-dark);
+        }
+
+        .required::after {
+            content: " *";
+            color: #e53e3e;
+        }
+
+        input[type=text],
+        textarea {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 15px;
+            transition: border .2s, box-shadow .2s;
+        }
+
+        input[type=text]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--wa-green);
+            box-shadow: 0 0 0 3px rgba(37, 211, 102, .15);
+        }
+
+        /* ---- Photo Upload ---- */
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border .2s;
+            position: relative;
+            background: #fafafa;
+        }
+
+        .upload-area.dragover {
+            border-color: var(--wa-green);
+            background: #e6f5ee;
+        }
+
+        .upload-area img.preview {
+            max-width: 100%;
+            max-height: 180px;
+            margin-top: 12px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .upload-area .placeholder {
+            color: #777;
+            font-size: 14px;
+        }
+
+        /* ---- Validation ---- */
+        .invalid input,
+        .invalid textarea,
+        .invalid .upload-area {
+            border-color: #e53e3e;
+        }
+
+        .error {
+            color: #e53e3e;
+            font-size: 13px;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .btn {
+            background: var(--wa-green);
+            color: #fff;
+            border: none;
+            padding: 12px 32px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background .25s, transform .1s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background: var(--wa-dark);
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 13px;
+            color: #777;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <div class="logo"></div>
+
+        <h1>Reporte de Daño</h1>
+        <p class="subtitle">
+            Escanea el ID de la unidad, sube una foto del daño y describe el problema.
+        </p>
+
+        <form action="/report-damage" method="POST" enctype="multipart/form-data" class="validated-form">
+
+            <!-- 1. Scan ID -->
+            <div class="form-group">
+                <label for="unitId" class="required">ID de la Unidad</label>
+                <input type="text" id="unitId" name="unitId" placeholder="Escanea o escribe el código" required
+                    autofocus />
+                <span class="error">Este campo es obligatorio.</span>
+            </div>
+
+            <!-- 2. Upload Photo -->
+            <div class="form-group">
+                <label for="photo" class="required">Foto del Daño</label>
+                <div class="upload-area" id="uploadArea">
+                    <input type="file" id="photo" name="photo" accept="image/*" required style="display:none;" />
+                    <div class="placeholder">
+                        Arrastra una foto aquí o haz clic para seleccionar
+                    </div>
+                    <img class="preview" id="previewImg" alt="Vista previa" />
+                </div>
+                <span class="error">Debes subir una imagen.</span>
+            </div>
+
+            <!-- 3. Description -->
+            <div class="form-group">
+                <label for="description" class="required">Descripción del Daño</label>
+                <textarea id="description" name="description" placeholder="Explica qué está dañado, ubicación, etc."
+                    required rows="4"></textarea>
+                <span class="error">Este campo es obligatorio.</span>
+            </div>
+
+            <div class="form-group">
+                <button type="submit" class="btn">
+                    Enviar Reporte
+                </button>
+            </div>
+        </form>
+
+        <div class="footer">
+            Powered by ON Management &amp; AWS
+        </div>
+    </div>
+
+    <!-- ---------- Client-side validation & drag-drop ---------- -->
+    <script>
+        const form = document.querySelector('.validated-form');
+        const inputs = form.querySelectorAll('input[required], textarea[required]');
+        const fileInput = document.getElementById('photo');
+        const uploadArea = document.getElementById('uploadArea');
+        const previewImg = document.getElementById('previewImg');
+
+        // ---- Drag & Drop ----
+        ['dragenter', 'dragover'].forEach(ev => {
+            uploadArea.addEventListener(ev, e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+        });
+        ['dragleave', 'drop'].forEach(ev => {
+            uploadArea.addEventListener(ev, e => { e.preventDefault(); uploadArea.classList.remove('dragover'); });
+        });
+        uploadArea.addEventListener('drop', e => {
+            const files = e.dataTransfer.files;
+            if (files.length) fileInput.files = files;
+            handleFile(files[0]);
+        });
+        uploadArea.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+
+        function handleFile(file) {
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                alert('Solo imágenes');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = ev => {
+                previewImg.src = ev.target.result;
+                previewImg.style.display = 'block';
+                uploadArea.querySelector('.placeholder').style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // ---- Form validation ----
+        form.addEventListener('submit', e => {
+            let valid = true;
+
+            inputs.forEach(el => {
+                const group = el.parentElement;
+                const err = group.querySelector('.error');
+                if (!el.value.trim()) {
+                    group.classList.add('invalid');
+                    err.style.display = 'block';
+                    valid = false;
+                } else {
+                    group.classList.remove('invalid');
+                    err.style.display = 'none';
+                }
+            });
+
+            // Photo
+            const photoGroup = uploadArea.parentElement;
+            const photoErr = photoGroup.querySelector('.error');
+            if (!fileInput.files.length) {
+                photoGroup.classList.add('invalid');
+                photoErr.style.display = 'block';
+                valid = false;
+            } else {
+                photoGroup.classList.remove('invalid');
+                photoErr.style.display = 'none';
+            }
+
+            if (!valid) e.preventDefault();
+        });
+    </script>
+</body>
+
+</html>

@@ -49,7 +49,6 @@
             text-align: center;
         }
 
-        /* Simple circular accent without icon */
         .logo {
             width: 84px;
             height: 84px;
@@ -145,12 +144,20 @@
             font-size: 13px;
             color: #777;
         }
+
+        /* Live counter style */
+        .counter {
+            font-size: 14px;
+            color: var(--wa-dark);
+            margin-top: 8px;
+            text-align: right;
+            font-weight: 500;
+        }
     </style>
 </head>
 
 <body>
     <div class="card">
-        <!-- Clean green circle – no icon -->
         <div class="logo"></div>
 
         <h1>Sistema de Inventario</h1>
@@ -163,6 +170,7 @@
                 <textarea class="form-control" id="description" name="IDs"
                     placeholder="Escribe aquí los EPCs, notas o sube un CSV..." required></textarea>
                 <span class="error" style="display:none;">Este campo es obligatorio.</span>
+                <div class="counter" id="unique-counter">0 IDs únicos detectados</div>
             </div>
 
             <div class="form-group">
@@ -177,12 +185,55 @@
         </div>
     </div>
 
-    <!-- Client-side validation -->
+    <!-- Client-side validation + EPC detection + unique count -->
     <script>
         const form = document.querySelector('.validated-form');
         const textarea = document.getElementById('description');
         const errorSpan = textarea.parentElement.querySelector('.error');
+        const counterDisplay = document.getElementById('unique-counter');
 
+        // Function to extract and count unique valid EPCs
+        function updateUniqueCount() {
+            const text = textarea.value;
+            const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+            console.log(lines)
+            const allTags = [];
+
+            // Extract from comma-separated or standalone
+            lines.forEach(line => {
+                const parts = line.split(',').map(p => p.trim());
+                parts.forEach(part => {
+                    if (part) {
+                        allTags.push(part);
+                    }
+                });
+            });
+
+            // Remove duplicates
+            const uniqueTags = [...new Set(allTags)];
+            const count = uniqueTags.length;
+
+            // Update counter
+            counterDisplay.textContent = `${count} ID${count === 1 ? '' : 's'} único${count === 1 ? '' : 's'} detectado${count === 1 ? '' : 's'}`;
+
+            // Log to console
+            console.clear();
+            console.log(`%c Total de IDs únicos válidos: ${count}`, 'color: #25D366; font-weight: bold; font-size: 14px;');
+            if (count > 0) {
+                console.log('%c Lista de IDs únicos:', 'color: #128C7E; font-weight: bold;');
+                uniqueTags.forEach((tag, i) => {
+                    console.log(`%c ${i + 1}. ${tag}`, 'color: #2d3748;');
+                });
+            }
+        }
+
+        // Real-time update on input
+        textarea.addEventListener('input', updateUniqueCount);
+
+        // Initial check
+        updateUniqueCount();
+
+        // Form submission validation
         form.addEventListener('submit', e => {
             if (!textarea.value.trim()) {
                 e.preventDefault();

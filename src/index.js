@@ -34,9 +34,7 @@ webApp.get('/', (req, res) => {
 
 const WA = require('../helper-function/whatsapp-send-message');
 
-// Route for WhatsApp
-// Route for WhatsApp
-
+// Route for WhatsApp 
 // Function to send message to WhatsApp
 // Unified sendMessage: handles strings, arrays, or objects
 // ──────────────────────────────────────────────────────────────
@@ -201,6 +199,32 @@ ${summary}
         </div>
     `);
 });
+
+webApp.post('/create_defect', async (req, res) => {
+    const body = req.body
+
+    try {
+        await createDefect(client, {
+            defect_count: 1,
+            descripcion: [req.body.descripcion],
+            image: [req.body.image],
+            scanId: epc
+        });
+        console.log(`${i + 1}. ${epc} → inserted`);
+    } catch (err) {
+        console.error(`${i + 1}. ${epc} → FAILED:`, err.message);
+    }
+})
+
+webApp.get('/create_defect', async (req, res) => {
+    res.render('document_damage')
+})
+
+
+async function createDefect(client, newTag) {
+    const result = await client.db("on").collection("defects").insertOne(newTag);
+    console.log(`New tag created with _id: ${result.insertedId}`);
+}
 // Start the server
 webApp.listen(PORT, () => {
     console.log(`Server is up and running at ${PORT}`);
