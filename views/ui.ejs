@@ -4,12 +4,9 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sistema de Inventario</title>
-
-    <!-- Google Font – Poppins -->
+    <title>Sistema de Inventario - Conteo en Vivo</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
         rel="stylesheet">
-
     <style>
         :root {
             --wa-green: #25D366;
@@ -32,18 +29,17 @@
             background: linear-gradient(135deg, #e6f5ee, #c2e8d6);
             color: var(--text);
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             padding: 20px;
+        }
+
+        .container {
+            max-width: 620px;
+            margin: 0 auto;
         }
 
         .card {
             background: var(--card);
-            max-width: 520px;
-            width: 100%;
             border-radius: 24px;
-            overflow: hidden;
             box-shadow: var(--shadow);
             padding: 40px 30px;
             text-align: center;
@@ -61,190 +57,205 @@
         h1 {
             font-size: 28px;
             font-weight: 600;
-            margin-bottom: 12px;
             color: var(--wa-dark);
+            margin-bottom: 12px;
         }
 
         .subtitle {
-            font-size: 16px;
             color: #555;
-            margin-bottom: 30px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-
-        label {
-            display: block;
-            font-weight: 500;
-            margin-bottom: 8px;
-            color: var(--wa-dark);
+            margin-bottom: 25px;
         }
 
         textarea {
             width: 100%;
-            min-height: 130px;
-            padding: 14px;
+            min-height: 180px;
+            padding: 16px;
             border: 2px solid var(--border);
-            border-radius: 12px;
+            border-radius: 14px;
             font-family: inherit;
             font-size: 15px;
-            transition: border 0.2s, box-shadow 0.2s;
+            resize: vertical;
         }
 
         textarea:focus {
             outline: none;
             border-color: var(--wa-green);
-            box-shadow: 0 0 0 3px rgba(37, 211, 102, .15);
+            box-shadow: 0 0 0 4px rgba(37, 211, 102, .15);
         }
 
-        .required::after {
-            content: " *";
-            color: #e53e3e;
-        }
-
-        .invalid textarea {
-            border-color: #e53e3e;
-        }
-
-        .invalid .error {
-            color: #e53e3e;
-            font-size: 13px;
-            margin-top: 4px;
-            display: block;
-        }
-
-        .btn {
-            background: var(--wa-green);
-            color: #fff;
-            border: none;
-            padding: 12px 32px;
-            font-size: 16px;
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(37, 211, 102, .1);
+            padding: 16px;
+            border-radius: 14px;
+            margin: 20px 0;
             font-weight: 600;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: background .25s, transform .1s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
         }
 
-        .btn:hover {
-            background: var(--wa-dark);
+        .stats div span {
+            display: block;
+            font-size: 28px;
+            color: var(--wa-green);
         }
 
-        .btn:active {
-            transform: translateY(1px);
+        .summary {
+            background: #f8fff9;
+            border: 2px solid var(--wa-green);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: left;
+            white-space: pre-line;
+            font-size: 15px;
+            line-height: 1.7;
+            min-height: 80px;
         }
 
-        .footer {
-            margin-top: 30px;
-            font-size: 13px;
-            color: #777;
-        }
-
-        /* Live counter style */
-        .counter {
-            font-size: 14px;
+        .loading {
             color: var(--wa-dark);
-            margin-top: 8px;
+            font-style: italic;
+        }
+
+        .counter {
             text-align: right;
+            margin-top: 8px;
             font-weight: 500;
+            color: var(--wa-dark);
         }
     </style>
 </head>
 
 <body>
-    <div class="card">
-        <div class="logo"></div>
 
-        <h1>Sistema de Inventario</h1>
-        <p class="subtitle">Ingresa los datos del conteo y presiona <strong>Terminar conteo</strong> para procesar.</p>
+    <div class="container">
+        <div class="card">
+            <div class="logo"></div>
+            <h1>Sistema de Inventario</h1>
+            <p class="subtitle">Escribe o pega los EPCs — verás en vivo qué artículos y clientes se están leyendo</p>
 
-        <form action="/conteo_input" method="POST" class="validated-form">
+            <textarea id="epcInput" placeholder="Pega EPCs aquí (uno por línea o separados por coma)..."></textarea>
+            <div class="counter" id="uniqueCounter">0 IDs únicos</div>
 
-            <div class="form-group">
-                <label for="description" class="required">Iniciar Conteo</label>
-                <textarea class="form-control" id="description" name="IDs"
-                    placeholder="Escribe aquí los EPCs, notas o sube un CSV..." required></textarea>
-                <span class="error" style="display:none;">Este campo es obligatorio.</span>
-                <div class="counter" id="unique-counter">0 IDs únicos detectados</div>
+            <div class="stats">
+                <div><span id="total">0</span> Total</div>
+                <div><span id="found">0</span> Encontrados</div>
+                <div><span id="notfound">0</span> No encontrados</div>
             </div>
 
-            <div class="form-group">
-                <button type="submit" class="btn">
-                    Terminar conteo
-                </button>
+            <div class="summary" id="summary">
+                <span class="loading">Escribe algunos EPCs para comenzar...</span>
             </div>
-        </form>
-
-        <div class="footer">
-            Powered by ON Management &amp; AWS
         </div>
     </div>
 
-    <!-- Client-side validation + EPC detection + unique count -->
     <script>
-        const form = document.querySelector('.validated-form');
-        const textarea = document.getElementById('description');
-        const errorSpan = textarea.parentElement.querySelector('.error');
-        const counterDisplay = document.getElementById('unique-counter');
+        const textarea = document.getElementById('epcInput');
+        const uniqueCounter = document.getElementById('uniqueCounter');
+        const totalSpan = document.getElementById('total');
+        const foundSpan = document.getElementById('found');
+        const notfoundSpan = document.getElementById('notfound');
+        const summaryDiv = document.getElementById('summary');
 
-        // Function to extract and count unique valid EPCs
-        function updateUniqueCount() {
-            const text = textarea.value;
-            const lines = text.split('\n').map(line => line.trim()).filter(line => line);
-            console.log(lines)
-            const allTags = [];
+        let debounceTimer;
 
-            // Extract from comma-separated or standalone
+        // Extrae todos los EPCs únicos del texto
+        function extractUniqueEPCs(text) {
+            const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+            const all = [];
             lines.forEach(line => {
-                const parts = line.split(',').map(p => p.trim());
-                parts.forEach(part => {
-                    if (part) {
-                        allTags.push(part);
-                    }
-                });
+                line.split(',').map(p => p.trim()).filter(Boolean).forEach(p => all.push(p));
             });
+            return [...new Set(all)];
+        }
 
-            // Remove duplicates
-            const uniqueTags = [...new Set(allTags)];
-            const count = uniqueTags.length;
-
-            // Update counter
-            counterDisplay.textContent = `${count} ID${count === 1 ? '' : 's'} único${count === 1 ? '' : 's'} detectado${count === 1 ? '' : 's'}`;
-
-            // Log to console
-            console.clear();
-            console.log(`%c Total de IDs únicos válidos: ${count}`, 'color: #25D366; font-weight: bold; font-size: 14px;');
-            if (count > 0) {
-                console.log('%c Lista de IDs únicos:', 'color: #128C7E; font-weight: bold;');
-                uniqueTags.forEach((tag, i) => {
-                    console.log(`%c ${i + 1}. ${tag}`, 'color: #2d3748;');
+        // Consulta al backend (debes tener este endpoint)
+        async function lookupEPCs(epcs) {
+            if (epcs.length === 0) return [];
+            try {
+                const res = await fetch('/api/lookup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ epcs })
                 });
+                if (!res.ok) throw new Error('Error de red');
+                return await res.json(); // → array de { epc, found: true/false, client?, article? }
+            } catch (err) {
+                console.error(err);
+                return epcs.map(epc => ({ epc, found: false, error: true }));
             }
         }
 
-        // Real-time update on input
-        textarea.addEventListener('input', updateUniqueCount);
+        // Genera el resumen estilo WhatsApp
+        function buildSummary(results) {
+            const summary = {};
+            const notFound = [];
 
-        // Initial check
-        updateUniqueCount();
+            results.forEach(r => {
+                if (r.found && r.client && r.article) {
+                    if (!summary[r.client]) summary[r.client] = {};
+                    summary[r.client][r.article] = (summary[r.client][r.article] || 0) + 1;
+                } else if (!r.found) {
+                    notFound.push(r.epc);
+                }
+            });
 
-        // Form submission validation
-        form.addEventListener('submit', e => {
-            if (!textarea.value.trim()) {
-                e.preventDefault();
-                textarea.parentElement.classList.add('invalid');
-                errorSpan.style.display = 'block';
-            } else {
-                textarea.parentElement.classList.remove('invalid');
-                errorSpan.style.display = 'none';
+            const lines = [];
+            for (const [client, articles] of Object.entries(summary)) {
+                for (const [article, count] of Object.entries(articles)) {
+                    const plural = count > 1 ? 's' : '';
+                    lines.push(`Se contaron ${count} ${article}${plural} de ${client}`);
+                }
             }
+
+            if (lines.length === 0) {
+                return notFound.length > 0
+                    ? `Se leyeron ${notFound.length} EPC(s), pero ninguno está registrado en la base de datos.`
+                    : 'Escribe algunos EPCs para ver el resumen.';
+            }
+
+            return lines.join('\n');
+        }
+
+        // Actualiza toda la UI
+        async function updateEverything() {
+            const text = textarea.value;
+            const uniqueEPCs = extractUniqueEPCs(text);
+
+            // Contador rápido
+            uniqueCounter.textContent = `${uniqueEPCs.length} ID${uniqueEPCs.length === 1 ? '' : 's'} único${uniqueEPCs.length === 1 ? '' : 's'}`;
+            totalSpan.textContent = uniqueEPCs.length;
+
+            if (uniqueEPCs.length === 0) {
+                summaryDiv.innerHTML = '<span class="loading">Escribe algunos EPCs para comenzar...</span>';
+                foundSpan.textContent = '0';
+                notfoundSpan.textContent = '0';
+                return;
+            }
+
+            summaryDiv.innerHTML = '<span class="loading">Consultando base de datos...</span>';
+
+            const results = await lookupEPCs(uniqueEPCs);
+
+            const found = results.filter(r => r.found);
+            const notFound = results.filter(r => !r.found);
+
+            foundSpan.textContent = found.length;
+            notfoundSpan.textContent = notFound.length;
+
+            const summaryText = buildSummary(results);
+            summaryDiv.textContent = summaryText;
+        }
+
+        // Debounce para no saturar el servidor
+        textarea.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(updateEverything, 600);
         });
+
+        // Primera carga
+        updateEverything();
     </script>
+
 </body>
 
 </html>

@@ -149,6 +149,36 @@ const sendMessage = async (content, senderID, options = {}) => {
     }
 };
 
+// Ruta API para búsqueda masiva en tiempo real
+webApp.post('/api/lookup', async (req, res) => {
+    try {
+        const { epcs } = req.body;
+        if (!Array.isArray(epcs) || epcs.length === 0) {
+            return res.json([]);
+        }
+
+        // Búsqueda eficiente en MongoDB (usa índice en scanId)
+        const docs = await client.db("on")
+            .collection("tags")
+            .find({ scanId: { $in: epcs } })
+            .project({ scanId: 1, client: 1, article: 1 })
+            .toArray();
+
+        const map = new Map(docs.map(d => [d.scanId, {
+            found: true,
+            client: d.client,
+            article: d.article
+        }]));
+
+        const result = epcs.map(epc => map.get(epc) || { epc, found: false });
+
+        res.json(result);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json([]);
+    }
+});
+
 // ---------- WhatsApp ----------
 // ---------- Web Form Input ----------
 webApp.post('/conteo_input', async (req, res) => {
